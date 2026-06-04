@@ -13,12 +13,16 @@ class VectorStore:
         
         
         qdrant_url = os.getenv("QDRANT_URL", "http://localhost:6333")
+        qdrant_api_key = os.getenv("QDRANT_API_KEY")
         
         if qdrant_url == 'memory':
             self.qdrant = QdrantClient(":memory:")
         else:
             try:
-                self.qdrant = QdrantClient(url=qdrant_url)
+                if qdrant_api_key:
+                    self.qdrant = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
+                else:
+                    self.qdrant = QdrantClient(url=qdrant_url)
             except Exception as e:
                 print(f"Failed to connect to Qdrant at {qdrant_url}. Using memory instead. Error: {e}")
                 self.qdrant = QdrantClient(":memory:")
