@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, User, Bot, Loader2, Info } from "lucide-react";
+import { Send, User, Bot, Loader2, Info, Upload, CheckCircle2 } from "lucide-react";
 
 interface Source {
   platform: string;
@@ -26,7 +26,9 @@ export default function Chat() {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -35,6 +37,45 @@ export default function Chat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: `Uploaded file: ${file.name}` }
+    ]);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${API_URL}/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("Upload failed");
+
+      const data = await res.json();
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: `✅ ${data.message} It will be available for search in a few moments once embedding finishes.` }
+      ]);
+    } catch (error) {
+      console.error(error);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "❌ Failed to upload file." }
+      ]);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,22 +188,41 @@ export default function Chat() {
 
       {/* Input Area */}
       <div className="p-4 bg-gray-50 border-t border-gray-300">
-        <form onSubmit={handleSubmit} className="relative flex items-center">
+        <form onSubmit={handleSubmit} className="relative flex items-center gap-2">
           <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about your social data..."
-            className="w-full bg-white border border-gray-300 rounded-md py-3 pl-4 pr-12 text-sm text-black placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-black transition-all"
-            disabled={isLoading}
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            className="hidden"
+            accept=".csv,.json,.html"
           />
           <button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            className="absolute right-2 p-2 bg-black hover:bg-gray-800 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading || isLoading}
+            className="p-3 bg-gray-200 hover:bg-gray-300 text-black rounded-md transition-colors disabled:opacity-50 flex-shrink-0"
+            title="Upload Data Export"
           >
-            <Send size={16} />
+            {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
           </button>
+          
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask about your social data..."
+              className="w-full bg-white border border-gray-300 rounded-md py-3 pl-4 pr-12 text-sm text-black placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-black transition-all"
+              disabled={isLoading}
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black hover:bg-gray-800 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Send size={16} />
+            </button>
+          </div>
         </form>
       </div>
     </div>

@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File
+import shutil
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
@@ -97,6 +98,22 @@ async def ingest_data(background_tasks: BackgroundTasks):
     return IngestResponse(
         status="processing",
         message=f"Started ingestion background task. Make sure exports are in {data_dir}"
+    )
+
+@app.post("/upload", response_model=IngestResponse)
+async def upload_data(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+    data_dir = os.path.join(os.path.dirname(__file__), "data_exports")
+    os.makedirs(data_dir, exist_ok=True)
+    
+    file_path = os.path.join(data_dir, file.filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    background_tasks.add_task(process_ingestion, data_dir)
+    
+    return IngestResponse(
+        status="processing",
+        message=f"File {file.filename} uploaded and ingestion started."
     )
 
 @app.post("/chat", response_model=QueryResponse)
