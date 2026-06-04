@@ -63,13 +63,13 @@ export default function Chat() {
       const data = await res.json();
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: `✅ ${data.message} It will be available for search in a few moments once embedding finishes.` }
+        { role: "assistant", content: ` ${data.message} It will be available for search in a few moments once embedding finishes.` }
       ]);
     } catch (error) {
       console.error(error);
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "❌ Failed to upload file." }
+        { role: "assistant", content: " Failed to upload file." }
       ]);
     } finally {
       setIsUploading(false);
